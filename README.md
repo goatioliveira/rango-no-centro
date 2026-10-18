@@ -5,6 +5,7 @@ O mapa colaborativo do almoço da galera no Centro do Rio. Cada vez que alguém 
 - **Mapa** com pins coloridos pela média: 🔴 abaixo de 5 · 🟠 5 a 6,9 · 🟡 7 a 8,4 · 🟢 8,5 ou mais · ⚪ ainda sem avaliação
 - **Avaliações** com nota geral (0 a 10, de meio em meio ponto), notas de comida, atendimento e custo-benefício, preço pago, o que pediu, prós, contras, "voltaria?" e até 3 fotos
 - A média de cada lugar usa só a **avaliação mais recente de cada pessoa** (quem vai toda semana não pesa mais que os outros)
+- **Adicionar restaurante** buscando pelo nome ou endereço (OpenStreetMap), **colando o link do Google Maps** (Compartilhar → Copiar link), mirando no mapa, segurando o dedo no lugar ou com "estou aqui"
 - **Lista** com busca, filtros (categorias, preço, nota mínima, "ainda não fui", "quero ir") e ordenação (melhor nota, mais avaliados, mais barato, mais recente, mais perto)
 - **Tempo real**: quando alguém marca ou avalia um lugar, aparece pra todo mundo na hora
 - **Grupo**: ranking de quem mais desbrava o Centro e as últimas atividades
