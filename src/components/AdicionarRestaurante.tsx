@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Crosshair, LocateFixed, MapPin, Plus, Search } from "lucide-react";
+import { ArrowLeft, ClipboardPaste, Crosshair, ExternalLink, LocateFixed, MapPin, Plus, Search, Signpost } from "lucide-react";
 import { getSupabase } from "@/lib/supabase/client";
 import { buscarNominatim, buscarPhoton, enderecoDoPonto, minhaPosicao, type Lugar } from "@/lib/geo";
 import { distanciaM, formatDistancia, possiveisDuplicatas } from "@/lib/format";
+import { expandirAbreviacoes, extrairLinkMaps } from "@/lib/linkMaps";
 import type { LatLng, Restaurant } from "@/lib/types";
 import { mensagemErro, useApp } from "./AppProvider";
 import { Botao, Campo, Chip, NotaBadge, Sheet, Spinner, inputCls } from "./ui";
@@ -19,7 +20,9 @@ function CamposRestaurante({
   setTagsSel,
   faixa,
   setFaixa,
+  focarNome,
 }: {
+  focarNome?: boolean;
   nome: string;
   setNome: (v: string) => void;
   endereco: string;
@@ -48,7 +51,15 @@ function CamposRestaurante({
   return (
     <div className="flex flex-col gap-5">
       <Campo label="Nome do restaurante" htmlFor="r-nome">
-        <input id="r-nome" className={inputCls} value={nome} maxLength={120} onChange={(e) => setNome(e.target.value)} />
+        <input
+          id="r-nome"
+          className={inputCls}
+          value={nome}
+          maxLength={120}
+          onChange={(e) => setNome(e.target.value)}
+          autoFocus={focarNome}
+          placeholder="Ex.: Bar Luiz"
+        />
       </Campo>
       <Campo label="Endereço" htmlFor="r-end" dica="Opcional, mas ajuda a galera a achar.">
         <input
@@ -158,6 +169,8 @@ export function AdicionarRestaurante() {
   const [buscando, setBuscando] = useState(false);
   const [erroBusca, setErroBusca] = useState<string | null>(null);
   const [localizando, setLocalizando] = useState(false);
+  const [lendoLink, setLendoLink] = useState(false);
+  const [aproximado, setAproximado] = useState(false);
   const controle = useRef<AbortController | null>(null);
 
   // Quando volta do "escolher no mapa", recebe a posição nova.
@@ -175,7 +188,7 @@ export function AdicionarRestaurante() {
   useEffect(() => {
     const termo = q.trim();
     controle.current?.abort();
-    if (termo.length < 3) {
+    if (termo.length < 3 || extrairLinkMaps(termo)) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setResultados(null);
       return;
@@ -217,12 +230,81 @@ export function AdicionarRestaurante() {
     }
   }
 
+  // Link do Google Maps colado na busca: lê no servidor e já vai pros detalhes.
+  async function lerLink(texto: string) {
+    const link = extrairLinkMaps(texto);
+    if (!link) return false;
+    setLendoLink(true);
+    setErroBusca(null);
+    try {
+      const res = await fetch(`/api/link-maps?url=${encodeURIComponent(link.url)}`);
+      const dados = (await res.json()) as {
+        erro?: string;
+        nome: string | null;
+        endereco: string | null;
+        lat: number | null;
+        lng: number | null;
+        aproximado: boolean;
+      };
+      if (!res.ok || dados.erro) {
+        setErroBusca(dados.erro ?? "Não consegui ler esse link.");
+        return true;
+      }
+      const nomeLink = dados.nome ?? (link.textoAntes.split("\n")[0] || "");
+      if (dados.lat == null || dados.lng == null) {
+        setQ(nomeLink);
+        setErroBusca("O link não diz onde fica o lugar. Procure pelo nome abaixo ou marque no mapa.");
+        return true;
+      }
+      const p = { lat: dados.lat, lng: dados.lng };
+      setNome(nomeLink);
+      setEndereco(dados.endereco ?? "");
+      setAproximado(dados.aproximado);
+      setPos(p);
+      app.focar(p, 18);
+      if (!dados.endereco) void enderecoDoPonto(p).then((end) => end && setEndereco((atual) => atual || end));
+      setQ("");
+    } catch {
+      setErroBusca("Não consegui ler esse link agora. Confere a internet e tenta de novo.");
+    } finally {
+      setLendoLink(false);
+    }
+    return true;
+  }
+
+  async function colarLink() {
+    try {
+      const texto = await navigator.clipboard.readText();
+      if (!extrairLinkMaps(texto)) {
+        setErroBusca("O que está copiado não é um link do Google Maps. No Google Maps, toque em Compartilhar → Copiar link.");
+        return;
+      }
+      setQ(texto);
+      await lerLink(texto);
+    } catch {
+      setErroBusca("O navegador não deixou colar automaticamente. Toque e segure no campo de busca e escolha Colar.");
+    }
+  }
+
   function escolherLugar(l: Lugar) {
     setPos({ lat: l.lat, lng: l.lng });
-    setNome(l.nome);
-    setEndereco(l.endereco);
+    setAproximado(false);
+    if (l.ehEndereco) {
+      // Escolheu só um endereço: o nome fica com o que foi digitado (se não for o próprio endereço).
+      const digitado = q.trim();
+      const digitouEndereco = /^(rua|avenida|praça|travessa|largo|beco|estrada)\b|\d/i.test(expandirAbreviacoes(digitado));
+      setNome(digitouEndereco ? "" : digitado);
+      setEndereco(l.endereco && !l.endereco.startsWith(l.nome) ? `${l.nome} – ${l.endereco}` : l.endereco || l.nome);
+    } else {
+      setNome(l.nome);
+      setEndereco(l.endereco);
+    }
     app.focar({ lat: l.lat, lng: l.lng }, 18);
   }
+
+  const linkGoogleBusca = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+    `${q.trim() || "restaurante"}, Centro, Rio de Janeiro`,
+  )}`;
 
   async function estouAqui() {
     setLocalizando(true);
@@ -316,16 +398,19 @@ export function AdicionarRestaurante() {
               <Search className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-muted" />
               <input
                 className={`${inputCls} pl-12`}
-                placeholder="Nome ou endereço"
-                aria-label="Buscar restaurante por nome ou endereço"
+                placeholder="Nome, endereço ou link do Google Maps"
+                aria-label="Buscar restaurante por nome, endereço ou link do Google Maps"
                 value={q}
-                onChange={(e) => setQ(e.target.value)}
+                onChange={(e) => {
+                  setQ(e.target.value);
+                  if (extrairLinkMaps(e.target.value)) void lerLink(e.target.value);
+                }}
                 type="search"
                 enterKeyHint="search"
                 autoFocus
               />
             </div>
-            <Botao type="submit" variant="secundario" disabled={q.trim().length < 2 || buscando}>
+            <Botao type="submit" variant="secundario" disabled={q.trim().length < 2 || buscando || lendoLink}>
               Buscar
             </Botao>
           </form>
@@ -339,9 +424,13 @@ export function AdicionarRestaurante() {
             </Botao>
           </div>
 
-          {buscando ? (
+          {lendoLink ? (
             <p className="flex items-center gap-2 text-sm text-muted">
-              <Spinner /> Procurando no Centro…
+              <Spinner /> Lendo o link do Google Maps…
+            </p>
+          ) : buscando ? (
+            <p className="flex items-center gap-2 text-sm text-muted">
+              <Spinner /> Procurando…
             </p>
           ) : null}
           {erroBusca ? <p className="text-sm text-danger">{erroBusca}</p> : null}
@@ -358,10 +447,16 @@ export function AdicionarRestaurante() {
                     onClick={() => escolherLugar(l)}
                     className="flex min-h-14 w-full items-start gap-3 px-4 py-3 text-left hover:bg-surface-2"
                   >
-                    <MapPin className="mt-0.5 size-5 shrink-0 text-brand" />
-                    <span className="min-w-0">
+                    {l.ehEndereco ? (
+                      <Signpost className="mt-0.5 size-5 shrink-0 text-muted" />
+                    ) : (
+                      <MapPin className="mt-0.5 size-5 shrink-0 text-brand" />
+                    )}
+                    <span className="min-w-0 flex-1">
                       <span className="block truncate font-semibold">{l.nome}</span>
-                      {l.endereco ? <span className="block truncate text-sm text-muted">{l.endereco}</span> : null}
+                      <span className="block truncate text-sm text-muted">
+                        {[l.ehEndereco ? "Endereço" : l.tipo, l.endereco !== l.nome ? l.endereco : null].filter(Boolean).join(" · ")}
+                      </span>
                     </span>
                   </button>
                 </li>
@@ -369,27 +464,57 @@ export function AdicionarRestaurante() {
             </ul>
           ) : resultados && !buscando ? (
             <p className="rounded-2xl bg-surface-2 p-4 text-sm">
-              Não achei no OpenStreetMap — muito lugar pequeno do Centro não está lá. Toque em <b>Marcar no mapa</b> ou{" "}
-              <b>Estou aqui</b>.
+              Não achei no OpenStreetMap. Muito lugar pequeno do Centro não está lá, mas dá pra puxar do Google Maps 👇
             </p>
-          ) : (
+          ) : null}
+
+          {/* Plano B: Google Maps → Compartilhar → Copiar link → colar aqui */}
+          {!lendoLink ? (
+            <div className="rounded-2xl border border-line p-4">
+              <p className="font-semibold">{resultados && !resultados.length ? "Pega do Google Maps" : "Não achou? Pega do Google Maps"}</p>
+              <ol className="mt-1 list-decimal pl-5 text-sm text-muted">
+                <li>Abra o lugar no Google Maps</li>
+                <li>
+                  Toque em <b>Compartilhar</b> → <b>Copiar link</b>
+                </li>
+                <li>Volte aqui e cole</li>
+              </ol>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <a
+                  href={linkGoogleBusca}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-line bg-surface px-3 text-sm font-semibold"
+                >
+                  <ExternalLink className="size-4" /> Google Maps
+                </a>
+                <Botao type="button" variant="secundario" className="px-3 text-sm" onClick={colarLink}>
+                  <ClipboardPaste className="size-4" /> Colar link
+                </Botao>
+              </div>
+            </div>
+          ) : null}
+
+          {!resultados ? (
             <p className="text-sm text-muted">
               Dica: no mapa, você também pode <b>segurar o dedo</b> em cima do lugar pra marcar direto.
             </p>
-          )}
+          ) : null}
         </div>
       ) : (
         <div className="flex flex-col gap-5 pt-2">
           <AvisoDuplicata duplicatas={duplicatas} pos={pos} />
           <div className="flex items-center justify-between gap-2 rounded-2xl bg-surface-2 px-4 py-3 text-sm">
             <span className="flex items-center gap-1.5">
-              <MapPin className="size-4 text-brand" /> Local marcado no mapa
+              <MapPin className="size-4 shrink-0 text-brand" />
+              {aproximado ? "Local aproximado (pelo endereço). Confere no mapa?" : "Local marcado no mapa"}
             </span>
             <button type="button" className="font-semibold text-sea" onClick={escolherNoMapa}>
               Ajustar
             </button>
           </div>
           <CamposRestaurante
+            focarNome={!nome}
             nome={nome}
             setNome={setNome}
             endereco={endereco}
