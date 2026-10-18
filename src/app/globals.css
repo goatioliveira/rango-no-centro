@@ -1,26 +1,297 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------
+   Paleta "Centro do Rio": areia, pôr do sol, mar e pedra portuguesa
+   --------------------------------------------------------------- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --bg: #fbf5ec;
+  --surface: #ffffff;
+  --surface-2: #f4ebdd;
+  --ink: #1d1712;
+  --muted: #6c5f52;
+  --line: #e7dac7;
+  --brand: #e2512a;
+  --brand-strong: #c43f1b;
+  --brand-ink: #ffffff;
+  --sea: #0b6e79;
+  --sun: #f4bf2a;
+  --danger: #c62839;
+  --wave: rgba(29, 23, 18, 0.07);
+  --shadow: 0 10px 30px -12px rgba(60, 35, 10, 0.35);
+  color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --bg: #14110e;
+    --surface: #1f1a16;
+    --surface-2: #2a241e;
+    --ink: #f7efe5;
+    --muted: #b3a595;
+    --line: #3a3129;
+    --brand: #ff6a3d;
+    --brand-strong: #ff8a62;
+    --brand-ink: #1d0d05;
+    --sea: #3fb8c4;
+    --sun: #f6c94a;
+    --danger: #ff5a6a;
+    --wave: rgba(247, 239, 229, 0.06);
+    --shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.8);
+    color-scheme: dark;
   }
 }
 
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-ink: var(--brand-ink);
+  --color-sea: var(--sea);
+  --color-sun: var(--sun);
+  --color-danger: var(--danger);
+  --font-sans: var(--ff-body), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--ff-display), var(--ff-body), ui-sans-serif, system-ui, sans-serif;
+  --shadow-soft: var(--shadow);
+}
+
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+/* Ondas do calçadão de Copacabana (pedra portuguesa) */
+.calcadao {
+  background-color: var(--surface-2);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='40' viewBox='0 0 80 40'%3E%3Cpath d='M0 20 C 10 5, 30 5, 40 20 S 70 35, 80 20' fill='none' stroke='%23000' stroke-width='9'/%3E%3C/svg%3E");
+  background-size: 64px 32px;
+  background-blend-mode: normal;
+  position: relative;
+}
+.calcadao::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--surface-2);
+  opacity: 0.92;
+  pointer-events: none;
+}
+@media (prefers-color-scheme: dark) {
+  .calcadao {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='40' viewBox='0 0 80 40'%3E%3Cpath d='M0 20 C 10 5, 30 5, 40 20 S 70 35, 80 20' fill='none' stroke='%23fff' stroke-width='9'/%3E%3C/svg%3E");
+  }
+  .calcadao::before {
+    opacity: 0.94;
+  }
+}
+.calcadao > * {
+  position: relative;
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* ---------------- Slider de nota ---------------- */
+.nota-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 44px;
+  background: transparent;
+  touch-action: pan-y;
+}
+.nota-slider::-webkit-slider-runnable-track {
+  height: 12px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #d7263d 0%, #ee7b1e 40%, #f2c230 70%, #1e9a54 100%);
+}
+.nota-slider::-moz-range-track {
+  height: 12px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #d7263d 0%, #ee7b1e 40%, #f2c230 70%, #1e9a54 100%);
+}
+.nota-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 36px;
+  height: 36px;
+  margin-top: -12px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 4px solid var(--ink);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+.nota-slider::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 4px solid var(--ink);
+}
+.nota-slider.vazio::-webkit-slider-runnable-track {
+  background: var(--line);
+}
+.nota-slider.vazio::-moz-range-track {
+  background: var(--line);
+}
+.nota-slider.vazio::-webkit-slider-thumb {
+  border-color: var(--muted);
+}
+
+/* ---------------- Mapa (Leaflet) ---------------- */
+.leaflet-container {
+  font-family: var(--font-sans);
+  background: var(--surface-2);
+}
+@media (prefers-color-scheme: dark) {
+  .leaflet-tile-pane {
+    filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.85) saturate(0.6);
+  }
+}
+.leaflet-control-attribution {
+  font-size: 10px;
+  background: color-mix(in srgb, var(--surface) 80%, transparent) !important;
+  color: var(--muted);
+}
+.leaflet-control-attribution a {
+  color: var(--sea);
+}
+
+.rango-pin {
+  --pin: #8a8f98;
+  --pin-fg: #fff;
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border-radius: 50% 50% 50% 0;
+  background: var(--pin);
+  transform: rotate(-45deg);
+  border: 3px solid #fff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+  display: grid;
+  place-items: center;
+  transition: transform 0.15s ease;
+}
+.rango-pin span {
+  transform: rotate(45deg);
+  color: var(--pin-fg);
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: -0.02em;
+  font-family: var(--font-display);
+}
+.rango-pin.selecionado {
+  transform: rotate(-45deg) scale(1.25);
+  border-color: var(--ink);
+}
+.rango-pin .quero {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  transform: rotate(45deg);
+  font-size: 12px;
+}
+
+.rango-cluster {
+  --pin: #8a8f98;
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  background: var(--pin);
+  color: #fff;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--pin) 35%, transparent), 0 4px 10px rgba(0, 0, 0, 0.3);
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-family: var(--font-display);
+  font-size: 15px;
+}
+
+.voce-esta-aqui {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #2f80ed;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 8px rgba(47, 128, 237, 0.25);
+}
+
+/* ---------------- Animações ---------------- */
+@keyframes sobe {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes aparece {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes pulo {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+.anim-sobe {
+  animation: sobe 0.28s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.anim-aparece {
+  animation: aparece 0.2s ease-out;
+}
+.anim-pulo {
+  animation: pulo 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .anim-sobe,
+  .anim-aparece,
+  .anim-pulo {
+    animation: none;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-2), var(--line), var(--surface-2));
+  background-size: 200% 100%;
+  animation: brilho 1.2s linear infinite;
+}
+@keyframes brilho {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
 }
